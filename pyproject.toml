@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-download-tweet = "twitter_downloader:app"
+download-tweet = "twitter_downloader:download.app"
 
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]
