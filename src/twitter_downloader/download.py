@@ -1,4 +1,3 @@
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -8,38 +7,32 @@ import ffmpeg
 import httpx
 import typer
 import whisper
-from apify_client import ApifyClient
-from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 from whisper.utils import get_writer
 
 
+class UnfoundException(Exception):
+    pass
+
+
 def get_download_url(twitter_url: str) -> str:
-    load_dotenv(Path("~/.config/twitter-downloader/.env").expanduser())
-    token = os.environ["token"]
-
-    client = ApifyClient(token)
-
-    run_input = {
-        "startUrls": [twitter_url],
-        "proxyConfiguration": {
-            "useApifyProxy": True,
-            "apifyProxyGroups": ["RESIDENTIAL"],
-        },
-    }
-
-    run = client.actor("zVDlrh34Zwp3735an").call(run_input=run_input)
-
-    if not run:
-        print("API client failed")
-        sys.exit(1)
-
-    dataset_id = run.default_dataset_id
-    dataset_client = client.dataset(dataset_id)
-
-    if len(dataset_client.list_items().items) == 0:
+    response = httpx.get(twitter_url)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.content, "html.parser")
+    try:
+        div = soup.find("div", {"itemprop": "video"})
+        if not div:
+            raise UnfoundException
+        meta = div.find("meta", {"itemprop": "contentUrl"})
+        if not meta:
+            raise UnfoundException
+        download_url = meta.get("content")
+        if not download_url:
+            raise UnfoundException
+        return download_url  # ty: ignore[invalid-return-type]
+    except UnfoundException:
         print("No video found!")
         sys.exit(1)
-    return dataset_client.list_items().items[0]["download_url"]
 
 
 def get_video(download_url: str) -> bytes:

@@ -7,14 +7,6 @@ Download Twitter/X videos and embed AI-generated subtitles with Whisper.
 - **System**: `ffmpeg` (install via your package manager: `brew install ffmpeg`, `apt install ffmpeg`, etc.)
 - **Python**: 3.11+ with `uv` or `pip`
 
-## Setup
-
-1. Get an Apify API token from [https://apify.com](https://apify.com)
-2. Create `~/.config/twitter-downloader/.env`:
-   ```
-   token=<YOUR_APIFY_TOKEN>
-   ```
-
 ## Usage
 
 ```bash
