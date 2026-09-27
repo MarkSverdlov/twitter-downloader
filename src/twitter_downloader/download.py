@@ -65,7 +65,7 @@ def download_and_subtitle_tweet(
             file.write(video)
         model = whisper.load_model("base.en")
         result = model.transcribe(str(temp / "video.mp4"), word_timestamps=True)
-        srt_writer = get_writer("srt", temp)
+        srt_writer = get_writer("srt", str(temp))
         srt_writer(result, str(temp / "video.mp4"))
         ffmpeg.output(
             ffmpeg.input(str(temp / "video.mp4")),
