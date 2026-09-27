@@ -1,3 +1,4 @@
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -11,28 +12,36 @@ from bs4 import BeautifulSoup
 from whisper.utils import get_writer
 
 
-class UnfoundException(Exception):
-    pass
+def find_video_url(soup: BeautifulSoup) -> str | None:
+    div = soup.find("div", {"itemprop": "video"})
+    if div:
+        meta = div.find("meta", {"itemprop": "contentUrl"})
+        if meta:
+            content = meta.get("content")
+            if content:
+                return str(content)
+
+    best: tuple[int, str] | None = None
+    for script in soup.find_all("script", attrs={"data-tsr-stream-part": True}):
+        for block in re.findall(r"\{[^{}]*content_type:\"video/mp4\"[^{}]*\}", script.string or ""):
+            bitrate_match = re.search(r"bitrate:(\d+)", block)
+            url_match = re.search(r'url:"([^"]+)"', block)
+            if url_match:
+                bitrate = int(bitrate_match.group(1)) if bitrate_match else 0
+                if best is None or bitrate > best[0]:
+                    best = (bitrate, url_match.group(1))
+    return best[1] if best else None
 
 
 def get_download_url(twitter_url: str) -> str:
     response = httpx.get(twitter_url)
     response.raise_for_status()
     soup = BeautifulSoup(response.content, "html.parser")
-    try:
-        div = soup.find("div", {"itemprop": "video"})
-        if not div:
-            raise UnfoundException
-        meta = div.find("meta", {"itemprop": "contentUrl"})
-        if not meta:
-            raise UnfoundException
-        download_url = meta.get("content")
-        if not download_url:
-            raise UnfoundException
-        return download_url  # ty: ignore[invalid-return-type]
-    except UnfoundException:
+    url = find_video_url(soup)
+    if not url:
         print("No video found!")
         sys.exit(1)
+    return url
 
 
 def get_video(download_url: str) -> bytes:
